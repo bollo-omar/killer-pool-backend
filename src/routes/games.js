@@ -50,10 +50,18 @@ router.get('/', async (req, res) => {
 // Create a new game (lobby)
 router.post('/', async (req, res) => {
     try {
-        const { playerIds, previousGameId } = req.body;
+        const { playerIds, previousGameId, scorekeeperId } = req.body;
 
         if (!playerIds || playerIds.length < 3) {
             return res.status(400).json({ error: 'Minimum 3 players required' });
+        }
+
+        if (!scorekeeperId) {
+            return res.status(400).json({ error: 'Scorekeeper is required' });
+        }
+
+        if (!playerIds.includes(scorekeeperId)) {
+            return res.status(400).json({ error: 'Scorekeeper must be one of the selected players' });
         }
 
         // Fetch player details
@@ -61,6 +69,11 @@ router.post('/', async (req, res) => {
 
         if (players.length !== playerIds.length) {
             return res.status(400).json({ error: 'One or more players not found' });
+        }
+
+        const scorekeeperPlayer = players.find(p => p._id.toString() === scorekeeperId);
+        if (!scorekeeperPlayer) {
+            return res.status(400).json({ error: 'Scorekeeper not found' });
         }
 
         let orderedPlayerIds = playerIds;
@@ -95,6 +108,10 @@ router.post('/', async (req, res) => {
                     turnOrder: index + 1, // 1-indexed turn order
                 };
             }),
+            scorekeeper: {
+                playerId: scorekeeperId,
+                nameSnapshot: scorekeeperPlayer.name,
+            },
         });
 
         await game.save();
