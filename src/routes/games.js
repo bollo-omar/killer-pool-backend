@@ -291,6 +291,15 @@ router.post('/:id/pot', async (req, res) => {
             return res.status(400).json({ error: 'Game is not active' });
         }
 
+        // Check if player has dropped out
+        const player = game.players.find(p => p.playerId.toString() === playerId);
+        if (!player) {
+            return res.status(404).json({ error: 'Player not in this game' });
+        }
+        if (player.droppedOut) {
+            return res.status(400).json({ error: 'Dropped out players cannot record scores' });
+        }
+
         // Get current state
         const stateCache = await GameStateCache.findOne({ gameId: game._id });
 
@@ -435,18 +444,26 @@ router.post('/:id/foul', async (req, res) => {
             return res.status(400).json({ error: 'Game is not active' });
         }
 
+        // Check if player has dropped out
+        const player = game.players.find(p => p.playerId.toString() === playerId);
+        if (!player) {
+            return res.status(404).json({ error: 'Player not in this game' });
+        }
+        if (player.droppedOut) {
+            return res.status(400).json({ error: 'Dropped out players cannot record fouls' });
+        }
+
         const stateCache = await GameStateCache.findOne({ gameId: game._id });
         if (!stateCache) {
             return res.status(500).json({ error: 'Game state not found' });
         }
 
-        // Calculate penalty based on ball value
+        const { getBallValue, applyEvent, getActiveBall } = require('../engine/gameEngine');
         const penalty = getBallValue(ballNumber);
 
-        // Create FOUL_COMMITTED event
         const event = new Event({
             gameId: game._id,
-            type: 'FOUL_COMMITTED',
+            type: 'FOUL',
             payload: { playerId, ballNumber, penalty },
         });
         await event.save();
