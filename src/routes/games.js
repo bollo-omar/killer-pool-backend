@@ -94,9 +94,6 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Scorekeeper is required' });
         }
 
-        if (!playerIds.includes(scorekeeperId)) {
-            return res.status(400).json({ error: 'Scorekeeper must be one of the selected players' });
-        }
 
         // Fetch player details
         const players = await Player.find({ _id: { $in: playerIds } });
