@@ -310,7 +310,7 @@ router.post('/:id/pot', async (req, res) => {
             });
             await event.save();
 
-            const newState = applyEvent(stateCache.toObject(), event);
+            const newState = applyEvent(stateCache.toObject(), event, game);
             await GameStateCache.findOneAndUpdate({ gameId: game._id }, newState, { new: true });
 
             const { emitGameUpdate } = require('../config/socket');
@@ -359,7 +359,7 @@ router.post('/:id/pot', async (req, res) => {
         await event.save();
 
         // Apply event to state
-        const newState = applyEvent(stateCache.toObject(), event);
+        const newState = applyEvent(stateCache.toObject(), event, game);
 
         // Update state cache
         await GameStateCache.findOneAndUpdate(
@@ -452,7 +452,7 @@ router.post('/:id/foul', async (req, res) => {
         await event.save();
 
         // Apply event to state
-        const newState = applyEvent(stateCache.toObject(), event);
+        const newState = applyEvent(stateCache.toObject(), event, game);
         await GameStateCache.findOneAndUpdate({ gameId: game._id }, newState, { new: true });
 
         // Emit real-time update

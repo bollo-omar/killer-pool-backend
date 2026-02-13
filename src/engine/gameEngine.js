@@ -58,9 +58,10 @@ const calculateRemainingTotal = (remainingBalls) => {
  * Pure function: Apply an event to the game state
  * @param {Object} state - Current game state
  * @param {Object} event - Event to apply
+ * @param {Object} [game] - Optional game document (needed for dropout filtering in BALL_POTTED)
  * @returns {Object} - New game state
  */
-const applyEvent = (state, event) => {
+const applyEvent = (state, event, game) => {
     const newState = JSON.parse(JSON.stringify(state)); // Deep clone
 
     switch (event.type) {
@@ -105,8 +106,10 @@ const applyEvent = (state, event) => {
             });
 
             // Check for clinch (early winner)
-            // Only consider active players (not dropped out) for winning
-            const activePlayers = game.players.filter(p => !p.droppedOut).map(p => p.playerId.toString());
+            // Only consider active players (not dropped out) for winning; fall back to all if game not passed
+            const activePlayers = game && game.players
+                ? game.players.filter(p => !p.droppedOut).map(p => p.playerId.toString())
+                : newState.scores.map(s => s.playerId.toString());
             const topPlayers = newState.scores.filter(s =>
                 s.score === newState.topScore && activePlayers.includes(s.playerId.toString())
             );
@@ -227,9 +230,9 @@ const rebuildStateFromEvents = (game, events) => {
         isFirstBallPotted: false, // Track if any ball has been potted
     };
 
-    // Apply each event in order
+    // Apply each event in order (pass game for dropout-aware clinch logic)
     for (const event of events) {
-        state = applyEvent(state, event);
+        state = applyEvent(state, event, game);
     }
 
     return state;
