@@ -75,4 +75,68 @@ router.post('/:id/archive', async (req, res) => {
     }
 });
 
+// Get player win statistics
+router.get('/:id/wins', async (req, res) => {
+    try {
+        const Game = require('../models/Game');
+        const GameStateCache = require('../models/GameStateCache');
+        const playerId = req.params.id;
+
+        // Find all ended games where player participated
+        const games = await Game.find({
+            'players.playerId': playerId,
+            status: 'ENDED'
+        }).sort({ createdAt: -1 });
+
+        // Get game states to determine wins
+        const gameIds = games.map(g => g.id);
+        const gameStates = await GameStateCache.find({
+            gameId: { $in: gameIds }
+        });
+
+        // Calculate wins
+        let totalWins = 0;
+        const recentWins = [];
+
+        for (const game of games) {
+            const state = gameStates.find(s => s.gameId.toString() === game.id);
+            if (state) {
+                // Find player's score
+                const playerScore = state.scores.find(s =>
+                    s.playerId.toString() === playerId
+                );
+
+                // Check if player won (highest score)
+                if (playerScore) {
+                    const maxScore = Math.max(...state.scores.map(s => s.score));
+                    if (playerScore.score === maxScore && playerScore.score > 0) {
+                        totalWins++;
+                        if (recentWins.length < 10) {
+                            recentWins.push({
+                                gameId: game.id,
+                                score: playerScore.score,
+                                date: game.createdAt,
+                                players: game.players.length
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        const totalGames = games.length;
+        const winPercentage = totalGames > 0 ? (totalWins / totalGames * 100).toFixed(1) : 0;
+
+        res.json({
+            playerId,
+            totalGames,
+            totalWins,
+            winPercentage: parseFloat(winPercentage),
+            recentWins
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

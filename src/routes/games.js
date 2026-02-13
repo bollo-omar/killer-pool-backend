@@ -18,16 +18,50 @@ router.get('/', async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const status = req.query.status; // Filter by status
+        const playerId = req.query.playerId; // Filter by player
+        const scorekeeperId = req.query.scorekeeperId; // Filter by scorekeeper
+        const startDate = req.query.startDate; // Filter by start date
+        const endDate = req.query.endDate; // Filter by end date
+        const sortBy = req.query.sortBy || 'updatedAt'; // Sort field
+        const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1; // Sort order
 
         const filter = {};
+
+        // Status filter
         if (status) {
             filter.status = status;
         }
 
+        // Player filter
+        if (playerId) {
+            filter['players.playerId'] = playerId;
+        }
+
+        // Scorekeeper filter
+        if (scorekeeperId) {
+            filter['scorekeeper.playerId'] = scorekeeperId;
+        }
+
+        // Date range filter
+        if (startDate || endDate) {
+            filter.createdAt = {};
+            if (startDate) {
+                filter.createdAt.$gte = new Date(startDate);
+            }
+            if (endDate) {
+                filter.createdAt.$lte = new Date(endDate);
+            }
+        }
+
+        // Build sort object
+        const sort = {};
+        sort[sortBy] = sortOrder;
+
         const games = await Game.find(filter)
             .populate('players.playerId')
+            .populate('scorekeeper.playerId')
             .populate('winners')
-            .sort({ updatedAt: -1 })
+            .sort(sort)
             .limit(limit)
             .skip((page - 1) * limit);
 
