@@ -18,6 +18,10 @@ const gameSchema = new mongoose.Schema({
             required: true,
             min: 1,
         },
+        droppedOut: {
+            type: Boolean,
+            default: false,
+        },
     }],
     scorekeeper: {
         playerId: {

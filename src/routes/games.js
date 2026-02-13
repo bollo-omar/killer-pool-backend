@@ -590,4 +590,54 @@ router.post('/:id/end', async (req, res) => {
     }
 });
 
+// Mark player as dropped out
+router.post('/:id/dropout', async (req, res) => {
+    try {
+        const { playerId } = req.body;
+
+        if (!playerId) {
+            return res.status(400).json({ error: 'Player ID is required' });
+        }
+
+        const game = await Game.findById(req.params.id);
+        if (!game) {
+            return res.status(404).json({ error: 'Game not found' });
+        }
+
+        if (game.status !== 'ACTIVE') {
+            return res.status(400).json({ error: 'Can only drop out from active games' });
+        }
+
+        // Find player in game
+        const playerIndex = game.players.findIndex(p => p.playerId.toString() === playerId);
+        if (playerIndex === -1) {
+            return res.status(404).json({ error: 'Player not in this game' });
+        }
+
+        if (game.players[playerIndex].droppedOut) {
+            return res.status(400).json({ error: 'Player already dropped out' });
+        }
+
+        // Check if at least one other player will remain active
+        const activePlayersCount = game.players.filter(p => !p.droppedOut).length;
+        if (activePlayersCount <= 1) {
+            return res.status(400).json({ error: 'Cannot drop out - at least one player must remain active' });
+        }
+
+        // Mark player as dropped out
+        game.players[playerIndex].droppedOut = true;
+        await game.save();
+
+        // Populate and return updated game
+        const updatedGame = await Game.findById(game._id)
+            .populate('players.playerId')
+            .populate('scorekeeper.playerId')
+            .populate('winners');
+
+        res.json(updatedGame);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

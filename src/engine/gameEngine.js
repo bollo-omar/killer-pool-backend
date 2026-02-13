@@ -105,8 +105,14 @@ const applyEvent = (state, event) => {
             });
 
             // Check for clinch (early winner)
-            const topPlayers = newState.scores.filter(s => s.score === newState.topScore);
-            const nonTopPlayers = newState.scores.filter(s => s.score < newState.topScore);
+            // Only consider active players (not dropped out) for winning
+            const activePlayers = game.players.filter(p => !p.droppedOut).map(p => p.playerId.toString());
+            const topPlayers = newState.scores.filter(s =>
+                s.score === newState.topScore && activePlayers.includes(s.playerId.toString())
+            );
+            const nonTopPlayers = newState.scores.filter(s =>
+                s.score < newState.topScore && activePlayers.includes(s.playerId.toString())
+            );
 
             if (nonTopPlayers.length > 0) {
                 const bestChallengerMax = Math.max(...nonTopPlayers.map(s => s.maxPossible));
