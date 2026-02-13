@@ -13,6 +13,11 @@ const gameSchema = new mongoose.Schema({
             required: true,
         },
         nameSnapshot: String,
+        turnOrder: {
+            type: Number,
+            required: true,
+            min: 1,
+        },
     }],
     remainingBalls: {
         type: [Number],

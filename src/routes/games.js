@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
 // Create a new game (lobby)
 router.post('/', async (req, res) => {
     try {
-        const { playerIds } = req.body;
+        const { playerIds, previousGameId } = req.body;
 
         if (!playerIds || playerIds.length < 3) {
             return res.status(400).json({ error: 'Minimum 3 players required' });
@@ -63,12 +63,38 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'One or more players not found' });
         }
 
+        let orderedPlayerIds = playerIds;
+
+        // If previousGameId provided, reverse order based on final rankings
+        if (previousGameId) {
+            const previousGame = await Game.findById(previousGameId);
+            const previousState = await GameStateCache.findOne({ gameId: previousGameId });
+
+            if (previousGame && previousState && previousGame.status === 'ENDED') {
+                // Sort players by final score (ascending) - worst to best
+                const rankedPlayers = [...previousState.scores]
+                    .sort((a, b) => a.score - b.score)
+                    .map(s => s.playerId.toString());
+
+                // Filter to only include players in the new game
+                orderedPlayerIds = rankedPlayers.filter(id => playerIds.includes(id));
+
+                // Add any new players not in previous game at the end
+                const newPlayers = playerIds.filter(id => !rankedPlayers.includes(id));
+                orderedPlayerIds = [...orderedPlayerIds, ...newPlayers];
+            }
+        }
+
         const game = new Game({
             status: 'LOBBY',
-            players: players.map(p => ({
-                playerId: p._id,
-                nameSnapshot: p.name,
-            })),
+            players: orderedPlayerIds.map((playerId, index) => {
+                const player = players.find(p => p._id.toString() === playerId);
+                return {
+                    playerId,
+                    nameSnapshot: player.name,
+                    turnOrder: index + 1, // 1-indexed turn order
+                };
+            }),
         });
 
         await game.save();
@@ -148,6 +174,30 @@ router.get('/:id', async (req, res) => {
             state: stateCache,
             activeBall,
         });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get player turn order
+router.get('/:id/turn-order', async (req, res) => {
+    try {
+        const game = await Game.findById(req.params.id).populate('players.playerId');
+
+        if (!game) {
+            return res.status(404).json({ error: 'Game not found' });
+        }
+
+        // Sort players by turn order and return
+        const turnOrder = game.players
+            .sort((a, b) => a.turnOrder - b.turnOrder)
+            .map(p => ({
+                playerId: p.playerId._id,
+                name: p.playerId.name || p.nameSnapshot,
+                turnOrder: p.turnOrder,
+            }));
+
+        res.json({ players: turnOrder });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
