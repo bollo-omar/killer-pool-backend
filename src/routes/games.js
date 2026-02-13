@@ -102,7 +102,8 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'One or more players not found' });
         }
 
-        const scorekeeperPlayer = players.find(p => p._id.toString() === scorekeeperId);
+        // Fetch scorekeeper details (can be any player, not just game players)
+        const scorekeeperPlayer = await Player.findById(scorekeeperId);
         if (!scorekeeperPlayer) {
             return res.status(400).json({ error: 'Scorekeeper not found' });
         }
