@@ -320,7 +320,7 @@ router.post('/:id/pot', async (req, res) => {
             await event.save();
 
             const newState = applyEvent(stateCache.toObject(), event, game);
-            await GameStateCache.findOneAndUpdate({ gameId: game._id }, newState, { new: true });
+            await GameStateCache.findOneAndUpdate({ gameId: game._id }, newState, { returnDocument: 'after' });
 
             const { emitGameUpdate } = require('../config/socket');
             emitGameUpdate(game._id.toString(), { type: 'white-ball-potted', state: newState });
@@ -374,7 +374,7 @@ router.post('/:id/pot', async (req, res) => {
         await GameStateCache.findOneAndUpdate(
             { gameId: game._id },
             newState,
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         // If game ended, update game document
@@ -470,7 +470,7 @@ router.post('/:id/foul', async (req, res) => {
 
         // Apply event to state
         const newState = applyEvent(stateCache.toObject(), event, game);
-        await GameStateCache.findOneAndUpdate({ gameId: game._id }, newState, { new: true });
+        await GameStateCache.findOneAndUpdate({ gameId: game._id }, newState, { returnDocument: 'after' });
 
         // Emit real-time update
         const { emitGameUpdate } = require('../config/socket');
@@ -518,7 +518,7 @@ router.post('/:id/undo', async (req, res) => {
         await GameStateCache.findOneAndUpdate(
             { gameId: game._id },
             newState,
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         // Update game status if needed
