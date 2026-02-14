@@ -65,10 +65,18 @@ router.get('/', async (req, res) => {
             .limit(limit)
             .skip((page - 1) * limit);
 
+        // Populate topScore from GameStateCache for each game
+        const gamesWithTopScore = await Promise.all(games.map(async (game) => {
+            const gameState = await GameStateCache.findOne({ gameId: game._id });
+            const gameObj = game.toObject();
+            gameObj.topScore = gameState?.topScore || 0;
+            return gameObj;
+        }));
+
         const total = await Game.countDocuments(filter);
 
         res.json({
-            games,
+            games: gamesWithTopScore,
             pagination: {
                 page,
                 limit,
